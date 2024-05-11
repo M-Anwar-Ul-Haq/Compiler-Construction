@@ -39,13 +39,15 @@ expression: arith_expression
           | logical_expression
           ;
 
-logical_expression: arith_expression
-                  | logical_expression OR logical_expression
-                  | logical_expression AND logical_expression
-                  | NOT logical_expression %prec UNARY_MINUS
-                  | OPEN_PAREN logical_expression CLOSE_PAREN
+logical_expression: non_arith_logical_expression
                   | expression comparison_operator expression
                   ;
+
+non_arith_logical_expression: logical_expression OR logical_expression
+                            | logical_expression AND logical_expression
+                            | NOT logical_expression %prec UNARY_MINUS
+                            | OPEN_PAREN logical_expression CLOSE_PAREN
+                            ;
 
 comparison_operator: EQUALS
                    | NOT_EQUAL
@@ -72,11 +74,14 @@ factor: NUMBER
        | OPEN_PAREN expression CLOSE_PAREN
        ;
 
-conditional_statements: assignment
-                      | expression
-                      | print
-                      | conditional_statements conditional_statements
+conditional_statements: single_conditional_statement
+                      | conditional_statements single_conditional_statement
                       ;
+
+single_conditional_statement: assignment
+                            | expression
+                            | print
+                            ;
                       
 w_statements: assignment
             | expression
