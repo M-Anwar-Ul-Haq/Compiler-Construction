@@ -11,7 +11,7 @@
 %left EQUALS NOT_EQUAL LESS_THAN LESS_THAN_EQUAL GREATER_THAN GREATER_THAN_EQUAL
 %left PLUS MINUS
 %left MULTIPLY DIVIDE MODULO
-%nonassoc UNARY_MINUS
+%nonassoc UNARY_MINUS compariosn_operator
 
 %%
 
@@ -35,32 +35,10 @@ statement: assignment NEWLINE
 assignment: VARIABLE ASSIGN expression
           ;
 
-expression: arith_expression
-          | logical_expression
+expression: term
+          | expression PLUS term
+          | expression MINUS term
           ;
-
-logical_expression: non_arith_logical_expression
-                  | expression comparison_operator expression
-                  ;
-
-non_arith_logical_expression: logical_expression OR logical_expression
-                            | logical_expression AND logical_expression
-                            | NOT logical_expression %prec UNARY_MINUS
-                            | OPEN_PAREN logical_expression CLOSE_PAREN
-                            ;
-
-comparison_operator: EQUALS
-                   | NOT_EQUAL
-                   | LESS_THAN
-                   | LESS_THAN_EQUAL
-                   | GREATER_THAN
-                   | GREATER_THAN_EQUAL
-                   ;
-
-arith_expression: term
-                | arith_expression PLUS term
-                | arith_expression MINUS term
-                ;
 
 term: factor
     | term MULTIPLY factor
@@ -69,10 +47,32 @@ term: factor
     ;
 
 factor: NUMBER
-       | VARIABLE
-       | MINUS factor %prec UNARY_MINUS
-       | OPEN_PAREN expression CLOSE_PAREN
-       ;
+      | VARIABLE
+      | MINUS factor
+      | OPEN_PAREN expression CLOSE_PAREN
+      ;
+
+print: PRINT_DIRECTIVE print_expressions
+     ;
+     
+print_expressions: VARIABLE
+                 | STRING
+                 ;
+
+condition: expression comparison_operator expression
+         | condition AND condition
+         | condition OR condition
+         | NOT condition
+         | OPEN_PAREN condition CLOSE_PAREN
+         ;
+
+comparison_operator: EQUALS
+                   | LESS_THAN
+                   | LESS_THAN_EQUAL
+                   | GREATER_THAN
+                   | GREATER_THAN_EQUAL
+                   | NOT_EQUAL
+                   ;
 
 conditional_statements: single_conditional_statement
                       | conditional_statements single_conditional_statement
@@ -89,32 +89,27 @@ w_statements: assignment
             | w_statements w_statements
             ;
                       
-while_statement: WHILE_DIRECTIVE expression SPACE while_statements
+while_statement: WHILE_DIRECTIVE condition SPACE while_statements
                ;
 
-while_statements: w_statements assignment if_statement SPACE w_statements
-                | w_statements if_statement SPACE
+while_statements: w_statements SPACE if_statement SPACE w_statements
+                | w_statements SPACE if_statement
                 | if_statement SPACE w_statements
                 | w_statements
                 ;
 
-if_statement: IF_DIRECTIVE expression SPACE if_statements
+if_statement: IF_DIRECTIVE condition SPACE if_statements
             ;
             
 if_statements: conditional_statements if_statements
-             | else_condition
+             | conditional_statements else_condition
              ;
 
 else_condition: /* Null */
               | ELSE_DIRECTIVE conditional_statements
               ;
 
-print: PRINT_DIRECTIVE print_expressions
-     ;
-     
-print_expressions: VARIABLE
-                 | STRING
-                 ;
+
 
 %%
 
