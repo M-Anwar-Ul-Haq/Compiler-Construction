@@ -79,12 +79,15 @@ comparison_operator: EQUALS
                    | GREATER_THAN_EQUAL
                    | NOT_EQUAL
                    ;
-         
-w_statements: assignment
-            | print
-            | w_statements assignment
-            | w_statements print
+      
+in_statements: print
+             | assignment
+             ;
+            
+w_statements: in_statements
+            | w_statements SPACE in_statements
             ;
+            
                       
 while_statement: WHILE_DIRECTIVE condition SPACE while_statements
                ;
@@ -105,10 +108,8 @@ else_condition: /* Null */
               | ELSE_DIRECTIVE conditional_statements
               ;
 
-conditional_statements: assignment
-            	      | print
-                      | conditional_statements assignment
-                      | conditional_statements print
+conditional_statements: in_statements
+                      | conditional_statements in_statements
                       ;
 
 
@@ -118,5 +119,3 @@ int main() {
     yyparse();
     return 0;
 }
-
-

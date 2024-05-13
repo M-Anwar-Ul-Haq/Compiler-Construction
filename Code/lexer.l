@@ -36,7 +36,6 @@
 [ ]                         { return SPACE; }
 [  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s\n", yytext); exit(1); }
 \n                          { return NEWLINE; }
-"#"[^"]* "\n" ;             { /* Ignore comments */ }
 .                           { fprintf(stderr, "Invalid character: %s\n", yytext); exit(1); }
 
 %%
