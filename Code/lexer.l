@@ -11,6 +11,7 @@
 ":2"                        { return WHILE_DIRECTIVE; }
 ":3"                        { return IF_DIRECTIVE; }
 ":4"                        { return ELSE_DIRECTIVE; }
+"$"[0-9]                    { return FUNCTION_DEF; }
 "@"[0-9]                    { yylval.float_val = atof(yytext + 1); return VARIABLE; }
 "@@"[0-9][0-9]              { yylval.float_val = atof(yytext + 1); return VARIABLE; }
 ";"                         { return SEMICOLON; }
@@ -34,14 +35,14 @@
 [0-9]+                      { yylval.int_val = atoi(yytext); return NUMBER; }
 \"[^"]*\"                   { yylval.str_val = strdup(yytext + 1); yytext[strlen(yytext)-1] = 0; return STRING; }
 [ ]                         { return SPACE; }
-[  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s\n", yytext); exit(1); }
-\n                          { return NEWLINE; }
-.                           { fprintf(stderr, "Invalid character: %s\n", yytext); exit(1); }
+[  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s at line %d\n", yytext,yylineno); exit(1); }
+\n                          { yylineno++; return NEWLINE; }
+.                           { fprintf(stderr, "Invalid character: %s at line %d\n", yytext,yylineno); exit(1); }
 
 %%
 
-void yyerror(const char *s) {
-    fprintf(stderr, "Parse error: %s\n", s);
-    // You can add error handling here, like exiting the program
-}
 
+void yyerror(const char *s) {
+    fprintf(stderr, "Error at line %d: %s\n", yylineno, s);
+    fprintf(stderr, "Expected a valid expression.\n");
+}

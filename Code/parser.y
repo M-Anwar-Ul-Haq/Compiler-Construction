@@ -10,7 +10,7 @@
     float float_val;
 }
 
-%token START_DIRECTIVE PRINT_DIRECTIVE WHILE_DIRECTIVE IF_DIRECTIVE ELSE_DIRECTIVE <float_val> VARIABLE SEMICOLON EQUALS LESS_THAN LESS_THAN_EQUAL GREATER_THAN GREATER_THAN_EQUAL NOT_EQUAL AND OR ASSIGN PLUS MINUS MULTIPLY DIVIDE MODULO <int_val> NUMBER <str_val> STRING SPACE NEWLINE OPEN_PAREN CLOSE_PAREN NOT
+%token START_DIRECTIVE PRINT_DIRECTIVE WHILE_DIRECTIVE IF_DIRECTIVE ELSE_DIRECTIVE <float_val> VARIABLE SEMICOLON EQUALS LESS_THAN LESS_THAN_EQUAL GREATER_THAN GREATER_THAN_EQUAL NOT_EQUAL AND OR ASSIGN PLUS MINUS MULTIPLY DIVIDE MODULO <int_val> NUMBER <str_val> STRING SPACE NEWLINE OPEN_PAREN CLOSE_PAREN NOT FUNCTION_DEF
 
 %left OR
 %left AND
@@ -22,8 +22,17 @@
 
 %%
 
-program: directive
+program: functions NEWLINE directive
+       | directive
        ;
+
+
+functions: one_function
+         | functions NEWLINE one_function
+         ;
+
+one_function: FUNCTION_DEF NEWLINE statement_list
+            ;
 
 directive: START_DIRECTIVE NEWLINE statement_list
          ;
@@ -115,7 +124,9 @@ conditional_statements: in_statements
 
 %%
 
+
 int main() {
     yyparse();
     return 0;
 }
+
