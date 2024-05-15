@@ -11,10 +11,10 @@
 ":2"                        { return WHILE_DIRECTIVE; }
 ":3"                        { return IF_DIRECTIVE; }
 ":4"                        { return ELSE_DIRECTIVE; }
+":5"                        { return CALL_FUNC; }
 "$"[0-9]                    { return FUNCTION_DEF; }
 "@"[0-9]                    { yylval.float_val = atof(yytext + 1); return VARIABLE; }
 "@@"[0-9][0-9]              { yylval.float_val = atof(yytext + 1); return VARIABLE; }
-";"                         { return SEMICOLON; }
 "<"                         { return LESS_THAN; }
 "<="                        { return LESS_THAN_EQUAL; }
 ">"                         { return GREATER_THAN; }
