@@ -99,8 +99,9 @@ ASTNode* create_if_node(ASTNode* condition, ASTNode** true_body, int num_true) {
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
     node->type = NODE_TYPE_IF;
     node->left = condition;
-    node->children = true_body;
-    node->num_children = num_true;
+    node->true_body = true_body;
+    node->num_true = num_true;
+    node->num_false=0;
     return node;
 }
 
@@ -108,10 +109,12 @@ ASTNode* create_if_else_node(ASTNode* condition, ASTNode** true_body, int num_tr
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
     node->type = NODE_TYPE_IF;
     node->left = condition;
-    node->children = (ASTNode**)malloc((num_true + num_false) * sizeof(ASTNode*));
-    memcpy(node->children, true_body, num_true * sizeof(ASTNode*));
-    memcpy(node->children + num_true, false_body, num_false * sizeof(ASTNode*));
-    node->num_children = num_true + num_false;
+    node->true_body = (ASTNode**)malloc(num_true * sizeof(ASTNode*));
+    memcpy(node->true_body, true_body, num_true * sizeof(ASTNode*));
+    node->num_true = num_true;
+    node->false_body = (ASTNode**)malloc(num_false * sizeof(ASTNode*));
+    memcpy(node->false_body, false_body, num_false * sizeof(ASTNode*));
+    node->num_false = num_false;
     return node;
 }
 
@@ -124,13 +127,6 @@ ASTNode* create_while_node(ASTNode* condition, ASTNode** body, int num_children)
     return node;
 }
 
-ASTNode* create_statement_list_node(ASTNode** statements, int num_statements) {
-    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
-    node->type = NODE_TYPE_STATEMENT_LIST;
-    node->children = statements;
-    node->num_children = num_statements;
-    return node;
-}
 
 ASTNode* create_comparison_op_node(char* op) {
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
@@ -140,6 +136,22 @@ ASTNode* create_comparison_op_node(char* op) {
     node->children = NULL;
     node->num_children = 0;
     return node;
+}
+
+
+ASTNode* create_root_node(ASTNode** children, int num_children, ASTNode* main) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    node->type = NODE_TYPE_ROOT;
+    node->num_children = num_children+1;
+    node->children = children;
+    node->children[num_children] = main;
+    return node;
+}
+
+void printSpace(int depth){
+	for (int i = 0; i < depth; i++) {
+        printf("  ");
+    }
 }
 
 void print_ast_node(ASTNode* node, int depth) {
@@ -159,18 +171,22 @@ void print_ast_node(ASTNode* node, int depth) {
             break;
         case NODE_TYPE_BINARY_OP:
             printf("Binary Operator: %s\n", node->value.op);
+            printSpace(depth);
             printf("  Left:\n");
             print_ast_node(node->left, depth + 1);
+            printSpace(depth);
             printf("  Right:\n");
             print_ast_node(node->right, depth + 1);
             break;
         case NODE_TYPE_UNARY_OP:
             printf("Unary Operator: %s\n", node->value.op);
+            printSpace(depth);
             printf("  Operand:\n");
             print_ast_node(node->left, depth + 1);
             break;
         case NODE_TYPE_ASSIGNMENT:
             printf("Assignment: %s\n", node->value.var_name);
+            printSpace(depth);
             printf("  Value:\n");
             print_ast_node(node->left, depth + 1);
             break;
@@ -189,26 +205,37 @@ void print_ast_node(ASTNode* node, int depth) {
             break;
         case NODE_TYPE_IF:
             printf("If:\n");
+            printSpace(depth);
             printf("  Condition:\n");
             print_ast_node(node->left, depth + 1);
+            printSpace(depth);
             printf("  True Body:\n");
-            for (int i = 0; i < node->num_children; i++) {
-                print_ast_node(node->children[i], depth + 2);
+            for (int i = 0; i < node->num_true; i++) {
+                print_ast_node(node->true_body[i], depth + 2);
+            }
+            
+            printSpace(depth);
+            printf("  False Body:\n");
+            for (int i = 0; i < node->num_false; i++) {
+                print_ast_node(node->false_body[i], depth + 2);
             }
             break;
         case NODE_TYPE_WHILE:
             printf("While:\n");
+            printSpace(depth);
             printf("  Condition:\n");
             print_ast_node(node->left, depth + 1);
+            printSpace(depth);
             printf("  Body:\n");
             for (int i = 0; i < node->num_children; i++) {
                 print_ast_node(node->children[i], depth + 2);
             }
             break;
-        case NODE_TYPE_STATEMENT_LIST:
-            printf("Statement List:\n");
+        case NODE_TYPE_ROOT:
+            printf("Root:\n");
             for (int i = 0; i < node->num_children; i++) {
                 print_ast_node(node->children[i], depth + 1);
+                printf("\n");
             }
             break;
         case NODE_TYPE_COMPARISON_OP:

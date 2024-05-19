@@ -2,6 +2,7 @@
 #define AST_H
 
 typedef enum {
+    NODE_TYPE_ROOT,	
     NODE_TYPE_NUMBER,
     NODE_TYPE_VARIABLE,
     NODE_TYPE_STRING,
@@ -29,6 +30,12 @@ typedef struct ASTNode {
     } value;
     struct ASTNode** children;
     int num_children;
+    
+    struct ASTNode** true_body; // For the true part of if-else
+    int num_true;               // Number of nodes in the true part
+    struct ASTNode** false_body; // For the false part of if-else
+    int num_false; 
+    
 } ASTNode;
 
 ASTNode* create_number_node(float value);
@@ -42,9 +49,9 @@ ASTNode* create_function_def_node(char* name, ASTNode** body, int num_children);
 ASTNode* create_call_node(char* func_name);
 ASTNode* create_if_node(ASTNode* condition, ASTNode** true_body, int num_true);
 ASTNode* create_while_node(ASTNode* condition, ASTNode** body, int num_children);
-ASTNode* create_statement_list_node(ASTNode** statements, int num_statements);
 ASTNode* create_comparison_op_node(char* op);
 ASTNode* create_if_else_node(ASTNode* condition, ASTNode** true_body, int num_true, ASTNode** false_body, int num_false);
+ASTNode* create_root_node(ASTNode** children, int num_children, ASTNode* main);
 void print_ast(ASTNode* root);
 void print_ast_node(ASTNode* node, int depth);
 

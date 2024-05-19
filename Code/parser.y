@@ -21,8 +21,8 @@ int yylex(void);
 %token <str_val> VARIABLE STRING FUNCTION_DEF
 %token START_DIRECTIVE PRINT_DIRECTIVE WHILE_DIRECTIVE IF_DIRECTIVE ELSE_DIRECTIVE EQUALS LESS_THAN LESS_THAN_EQUAL GREATER_THAN GREATER_THAN_EQUAL NOT_EQUAL AND OR ASSIGN PLUS MINUS MULTIPLY DIVIDE MODULO CALL_FUNC NEWLINE SPACE OPEN_PAREN CLOSE_PAREN NOT
 
-%type <node> expression term factor assignment print_statement while_statement if_statement statement condition comparison_operator directive functions one_function print_expressions in_statements
-%type <node_list> statement_list w_statements while_statements conditional_statements
+%type <node> expression term factor assignment print_statement while_statement if_statement statement condition comparison_operator directive one_function print_expressions in_statements main
+%type <node_list> statement_list w_statements while_statements conditional_statements functions
 
 %left OR
 %left AND
@@ -34,21 +34,44 @@ int yylex(void);
 
 %%
 
-program: functions NEWLINE directive { root = $3; }
-       | directive { root = $1; }
+program: functions NEWLINE main { 
+	     int count = 0;
+             while ($1[count] != NULL) count++;
+	     root = create_root_node ($1, count, $3); 
+	  }
+       | main { root = $1; }
        ;
 
-functions: one_function { $$ = $1; }
-         | functions NEWLINE one_function { /* handle multiple functions if needed */ }
+functions: one_function { 
+                $$ = malloc(2 * sizeof(ASTNode*));
+                $$[0] = $1;
+                $$[1] = NULL;
+            }
+         | functions NEWLINE one_function { 
+                int count = 0;
+                while ($1[count] != NULL) count++;
+                $$ = realloc($1, (count + 2) * sizeof(ASTNode*));
+                $$[count] = $3;
+                $$[count + 1] = NULL;
+            }
          ;
 
-one_function: FUNCTION_DEF NEWLINE statement_list { $$ = create_function_def_node($1, $3, $3 == NULL ? 0 : (*$3)->num_children); }
+one_function: FUNCTION_DEF NEWLINE statement_list {
+ 
+	     		int count = 0;
+             		while ($3[count] != NULL) count++;
+                        $$ = create_function_def_node($1, $3, count); }
             ;
+            
+main: directive {
+	   $$ = $1;
+	}
+    ;
 
 directive: START_DIRECTIVE NEWLINE statement_list {
                     int count = 0;
                     while ($3[count] != NULL) count++;
-                    $$ = create_statement_list_node($3, count);
+                    $$ = create_function_def_node("Main", $3, count);
                 }
          ;
 
