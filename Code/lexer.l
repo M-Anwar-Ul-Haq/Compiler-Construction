@@ -1,5 +1,8 @@
 %{
+#include "ast.h"
 #include "parser.tab.h"
+#include "stdio.h"
+#include "stdlib.h"
 %}
 
 %option noyywrap
@@ -12,9 +15,9 @@
 ":3"                        { return IF_DIRECTIVE; }
 ":4"                        { return ELSE_DIRECTIVE; }
 ":5"                        { return CALL_FUNC; }
-"$"[0-9]                    { return FUNCTION_DEF; }
-"@"[0-9]                    { yylval.float_val = atof(yytext + 1); return VARIABLE; }
-"@@"[0-9][0-9]              { yylval.float_val = atof(yytext + 1); return VARIABLE; }
+"$"[0-9]                    { yylval.str_val = strdup(yytext); return FUNCTION_DEF; }
+"@"[0-9]                    { yylval.str_val = strdup(yytext); return VARIABLE; }
+"@@"[0-9][0-9]              { yylval.str_val = strdup(yytext); return VARIABLE; }
 "<"                         { return LESS_THAN; }
 "<="                        { return LESS_THAN_EQUAL; }
 ">"                         { return GREATER_THAN; }
@@ -32,7 +35,7 @@
 "*"                         { return MULTIPLY; }
 "/"                         { return DIVIDE; }
 "%"                         { return MODULO; }
-[0-9]+                      { yylval.int_val = atoi(yytext); return NUMBER; }
+[0-9]+                      { yylval.float_val = atof(yytext); return NUMBER; }
 \"[^"]*\"                   { yylval.str_val = strdup(yytext + 1); yytext[strlen(yytext)-1] = 0; return STRING; }
 [ ]                         { return SPACE; }
 [  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s at line %d\n", yytext,yylineno); exit(1); }
