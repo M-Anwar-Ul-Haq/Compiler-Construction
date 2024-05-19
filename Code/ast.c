@@ -112,7 +112,6 @@ ASTNode* create_if_else_node(ASTNode* condition, ASTNode** true_body, int num_tr
     memcpy(node->children, true_body, num_true * sizeof(ASTNode*));
     memcpy(node->children + num_true, false_body, num_false * sizeof(ASTNode*));
     node->num_children = num_true + num_false;
-    printf("IF Else Node done!\n");
     return node;
 }
 
@@ -140,7 +139,6 @@ ASTNode* create_comparison_op_node(char* op) {
     node->left = node->right = NULL;
     node->children = NULL;
     node->num_children = 0;
-    printf("C OP done! %s\n",op);
     return node;
 }
 

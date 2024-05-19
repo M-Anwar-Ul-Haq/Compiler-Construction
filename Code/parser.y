@@ -214,7 +214,6 @@ int main(int argc, char **argv) {
         yyin = file;
     }
     yyparse();
-    printf("Parse done!\n");
     print_ast(root);
     return 0;
 }
