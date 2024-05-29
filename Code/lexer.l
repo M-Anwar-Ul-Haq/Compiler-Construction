@@ -36,7 +36,7 @@
 "/"                         { return DIVIDE; }
 "%"                         { return MODULO; }
 [0-9]+                      { yylval.float_val = atof(yytext); return NUMBER; }
-\"[^"]*\"                   { yylval.str_val = strdup(yytext + 1); yytext[strlen(yytext)-1] = 0; return STRING; }
+\"[^"]*\"                   { yytext[strlen(yytext)-1] = 0; yylval.str_val = strdup(yytext + 1); return STRING; }
 [ ]                         { return SPACE; }
 [  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s at line %d\n", yytext,yylineno); exit(1); }
 \n                          { yylineno++; return NEWLINE; }

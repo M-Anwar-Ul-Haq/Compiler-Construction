@@ -1,5 +1,6 @@
 %{
 #include "ast.h"
+#include "codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 ASTNode* root;
 extern FILE* yyin;
 int yylex(void);
+
 %}
 
 %union {
@@ -71,7 +73,7 @@ main: directive {
 directive: START_DIRECTIVE NEWLINE statement_list {
                     int count = 0;
                     while ($3[count] != NULL) count++;
-                    $$ = create_function_def_node("Main", $3, count);
+                    $$ = create_main_function_node($3, count);
                 }
          ;
 
@@ -129,7 +131,7 @@ condition: expression comparison_operator expression { $$ = create_binary_op_nod
          | OPEN_PAREN condition CLOSE_PAREN { $$ = $2; }
          ;
 
-comparison_operator: EQUALS { $$ = create_comparison_op_node("="); }
+comparison_operator: EQUALS { $$ = create_comparison_op_node("=="); }
                    | LESS_THAN { $$ = create_comparison_op_node("<"); }
                    | LESS_THAN_EQUAL { $$ = create_comparison_op_node("<="); }
                    | GREATER_THAN { $$ = create_comparison_op_node(">"); }
@@ -236,8 +238,15 @@ int main(int argc, char **argv) {
         }
         yyin = file;
     }
+    
+    initialize_llvm();
+    
     yyparse();
-    print_ast(root);
+    
+    gencode(root);
+    
+    finalize_llvm("output.ll");
+    
     return 0;
 }
 

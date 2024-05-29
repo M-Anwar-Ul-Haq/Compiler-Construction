@@ -76,6 +76,15 @@ ASTNode* create_print_node(ASTNode* expr) {
     return node;
 }
 
+ASTNode* create_main_function_node(ASTNode** body, int num_children) {
+    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    node->type = NODE_TYPE_MAIN_FUNC;
+    node->value.var_name = strdup("Main");
+    node->children = body;
+    node->num_children = num_children;
+    return node;
+}
+
 ASTNode* create_function_def_node(char* name, ASTNode** body, int num_children) {
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
     node->type = NODE_TYPE_FUNCTION_DEF;
@@ -194,6 +203,12 @@ void print_ast_node(ASTNode* node, int depth) {
             printf("Print:\n");
             print_ast_node(node->left, depth + 1);
             break;
+        case NODE_TYPE_MAIN_FUNC:
+            printf("Function Definition: %s\n", node->value.var_name);
+            for (int i = 0; i < node->num_children; i++) {
+                print_ast_node(node->children[i], depth + 1);
+            }
+            break;
         case NODE_TYPE_FUNCTION_DEF:
             printf("Function Definition: %s\n", node->value.var_name);
             for (int i = 0; i < node->num_children; i++) {
@@ -250,5 +265,57 @@ void print_ast(ASTNode* root) {
     } else {
         print_ast_node(root, 0);
     }
+}
+
+
+// Symbol Table Functions
+static unsigned hash(const char *str, size_t size) {
+    unsigned hash = 0;
+    while (*str) {
+        hash = (hash << 5) + *str++;
+    }
+    return hash % size;
+}
+
+SymbolTable* create_symbol_table(size_t size) {
+    SymbolTable *symbol_table = (SymbolTable*)malloc(sizeof(SymbolTable));
+    symbol_table->table = (Symbol**)calloc(size, sizeof(Symbol*));
+    symbol_table->size = size;
+    return symbol_table;
+}
+
+void destroy_symbol_table(SymbolTable *symbol_table) {
+    for (size_t i = 0; i < symbol_table->size; ++i) {
+        Symbol *symbol = symbol_table->table[i];
+        while (symbol) {
+            Symbol *temp = symbol;
+            symbol = symbol->next;
+            free(temp->name);
+            free(temp);
+        }
+    }
+    free(symbol_table->table);
+    free(symbol_table);
+}
+
+void insert_symbol(SymbolTable *symbol_table, const char *name, LLVMValueRef value) {
+    unsigned index = hash(name, symbol_table->size);
+    Symbol *symbol = (Symbol*)malloc(sizeof(Symbol));
+    symbol->name = strdup(name);
+    symbol->value = value;
+    symbol->next = symbol_table->table[index];
+    symbol_table->table[index] = symbol;
+}
+
+LLVMValueRef lookup_symbol(SymbolTable *symbol_table, const char *name) {
+    unsigned index = hash(name, symbol_table->size);
+    Symbol *symbol = symbol_table->table[index];
+    while (symbol) {
+        if (strcmp(symbol->name, name) == 0) {
+            return symbol->value;
+        }
+        symbol = symbol->next;
+    }
+    return NULL;
 }
 
