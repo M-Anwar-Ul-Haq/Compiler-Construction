@@ -40,6 +40,7 @@
 [ ]                         { return SPACE; }
 [  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s at line %d\n", yytext,yylineno); exit(1); }
 \n                          { yylineno++; return NEWLINE; }
+\r			    { }
 .                           { fprintf(stderr, "Invalid character: %s at line %d\n", yytext,yylineno); exit(1); }
 
 %%
