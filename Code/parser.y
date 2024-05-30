@@ -193,6 +193,11 @@ while_statements: w_statements SPACE if_statement SPACE w_statements {
                     }
                     $$[1 + count] = NULL;
                   }
+                | if_statement { 
+                    $$ = malloc((2) * sizeof(ASTNode*));
+                    $$[0] = $1;
+                    $$[1] = NULL;
+                  }
                 | w_statements { $$ = $1; }
                 ;
 

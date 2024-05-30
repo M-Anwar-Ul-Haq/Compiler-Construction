@@ -40,7 +40,7 @@
 [ ]                         { return SPACE; }
 [  ][ ]*                    { fprintf(stderr, "Invalid spaces: %s at line %d\n", yytext,yylineno); exit(1); }
 \n                          { yylineno++; return NEWLINE; }
-\r			    { }
+\r                          { ; }
 .                           { fprintf(stderr, "Invalid character: %s at line %d\n", yytext,yylineno); exit(1); }
 
 %%
@@ -48,5 +48,4 @@
 
 void yyerror(const char *s) {
     fprintf(stderr, "Error at line %d: %s\n", yylineno, s);
-    fprintf(stderr, "Expected a valid expression.\n");
 }
