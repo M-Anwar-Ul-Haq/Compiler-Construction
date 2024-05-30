@@ -238,10 +238,23 @@ int main(int argc, char **argv) {
         }
         yyin = file;
     }
-    
+
     initialize_llvm();
     
     yyparse();
+    
+    // Redirect stdout to the parse_tree file
+    FILE *parse_tree_file = freopen("parse_tree", "w", stdout);
+    if (!parse_tree_file) {
+        fprintf(stderr, "Could not open parse_tree file for writing\n");
+        return 1;
+    }
+    
+    print_ast(root);
+    
+    // Restore stdout to its original state
+    fflush(stdout);
+    freopen("/dev/tty", "w", stdout); // This works for Unix-like systems; use "CON" on Windows
     
     gencode(root);
     
@@ -249,4 +262,5 @@ int main(int argc, char **argv) {
     
     return 0;
 }
+
 

@@ -12,7 +12,6 @@ static LLVMModuleRef module;
 static LLVMBuilderRef builder;
 static LLVMExecutionEngineRef engine;
 static LLVMValueRef main_function;
-static SymbolTable *symbol_table;
 
 void initialize_llvm() {
     LLVMInitializeNativeTarget();
@@ -26,8 +25,6 @@ void initialize_llvm() {
     LLVMPassManagerRef pass_manager = LLVMCreateFunctionPassManagerForModule(module);
     LLVMPassManagerBuilderPopulateFunctionPassManager(pass_manager_builder, pass_manager);
     LLVMInitializeFunctionPassManager(pass_manager);
-    
-    symbol_table = create_symbol_table(1024);
 }
 
 void finalize_llvm(const char *filename) {
@@ -45,7 +42,6 @@ void finalize_llvm(const char *filename) {
     // Close the file
     fclose(file);
     
-    destroy_symbol_table(symbol_table);
     LLVMDisposeBuilder(builder);
     LLVMDisposeExecutionEngine(engine);
     LLVMDisposeModule(module);
@@ -59,7 +55,7 @@ LLVMValueRef codegen_string(ASTNode* node) {
     return LLVMBuildGlobalStringPtr(builder, node->value.str_val, "str");
 }
 
-LLVMValueRef codegen_variable(ASTNode* node) {
+LLVMValueRef codegen_variable(ASTNode* node, SymbolTable* symbol_table) {
     LLVMValueRef var = lookup_symbol(symbol_table, node->value.var_name);
     if (!var) {
         fprintf(stderr, "Undefined variable: %s\n", node->value.var_name);
@@ -68,9 +64,9 @@ LLVMValueRef codegen_variable(ASTNode* node) {
     return LLVMBuildLoad(builder, var, node->value.var_name);
 }
 
-LLVMValueRef codegen_binary_op(ASTNode* node) {
-    LLVMValueRef left = generate_code(node->left);
-    LLVMValueRef right = generate_code(node->right);
+LLVMValueRef codegen_binary_op(ASTNode* node, SymbolTable* symbol_table) {
+    LLVMValueRef left = generate_code(node->left, symbol_table);
+    LLVMValueRef right = generate_code(node->right, symbol_table);
     if (strcmp(node->value.op, "+") == 0) {
         return LLVMBuildFAdd(builder, left, right, "addtmp");
     } else if (strcmp(node->value.op, "-") == 0) {
@@ -103,8 +99,8 @@ LLVMValueRef codegen_binary_op(ASTNode* node) {
     }
 }
 
-LLVMValueRef codegen_unary_op(ASTNode* node) {
-    LLVMValueRef operand = generate_code(node->left);
+LLVMValueRef codegen_unary_op(ASTNode* node, SymbolTable* symbol_table) {
+    LLVMValueRef operand = generate_code(node->left, symbol_table);
     if (strcmp(node->value.op, "-") == 0) {
         return LLVMBuildFNeg(builder, operand, "negtmp");
     } else if (strcmp(node->value.op, "!") == 0) {
@@ -116,8 +112,8 @@ LLVMValueRef codegen_unary_op(ASTNode* node) {
     }
 }
 
-LLVMValueRef codegen_assignment(ASTNode* node) {
-    LLVMValueRef value = generate_code(node->left);
+LLVMValueRef codegen_assignment(ASTNode* node, SymbolTable* symbol_table) {
+    LLVMValueRef value = generate_code(node->left, symbol_table);
     LLVMValueRef variable = lookup_symbol(symbol_table, node->value.var_name);
     if (!variable) {
         variable = LLVMBuildAlloca(builder, LLVMFloatType(), node->value.var_name);
@@ -127,8 +123,8 @@ LLVMValueRef codegen_assignment(ASTNode* node) {
     return value;
 }
 
-LLVMValueRef codegen_print(ASTNode* node) {
-    LLVMValueRef value = generate_code(node->left);
+LLVMValueRef codegen_print(ASTNode* node, SymbolTable* symbol_table) {
+    LLVMValueRef value = generate_code(node->left, symbol_table);
 
     // Define the printf function type
     LLVMTypeRef printf_args_types[] = { LLVMPointerType(LLVMInt8Type(), 0) };
@@ -163,21 +159,21 @@ LLVMValueRef codegen_print(ASTNode* node) {
     return value;
 }
 
-LLVMValueRef codegen_function_def(ASTNode* node) {
+LLVMValueRef codegen_function_def(ASTNode* node, SymbolTable* symbol_table) {
     LLVMTypeRef func_type = LLVMFunctionType(LLVMVoidType(), NULL, 0, 0);
     LLVMValueRef func = LLVMAddFunction(module, node->value.var_name, func_type);
     LLVMBasicBlockRef entry = LLVMAppendBasicBlock(func, "entry");
     LLVMPositionBuilderAtEnd(builder, entry);
     
     for (int i = 0; i < node->num_children; i++) {
-        generate_code(node->children[i]);
+        generate_code(node->children[i], symbol_table);
     }
     
     LLVMBuildRetVoid(builder);
     return func;
 }
 
-LLVMValueRef codegen_call(ASTNode* node) {
+LLVMValueRef codegen_call(ASTNode* node, SymbolTable* symbol_table) {
     LLVMValueRef func = LLVMGetNamedFunction(module, node->value.var_name);
     if (!func) {
         fprintf(stderr, "Unknown function referenced: %s\n", node->value.var_name);
@@ -186,8 +182,8 @@ LLVMValueRef codegen_call(ASTNode* node) {
     return LLVMBuildCall(builder, func, NULL, 0, "");
 }
 
-LLVMValueRef codegen_if(ASTNode* node) {
-    LLVMValueRef condition = generate_code(node->left);
+LLVMValueRef codegen_if(ASTNode* node, SymbolTable* symbol_table) {
+    LLVMValueRef condition = generate_code(node->left, symbol_table);
     LLVMBasicBlockRef then_block = LLVMAppendBasicBlock(main_function, "then");
     LLVMBasicBlockRef else_block = LLVMAppendBasicBlock(main_function, "else");
     LLVMBasicBlockRef merge_block = LLVMAppendBasicBlock(main_function, "ifcont");
@@ -196,13 +192,13 @@ LLVMValueRef codegen_if(ASTNode* node) {
     
     LLVMPositionBuilderAtEnd(builder, then_block);
     for (int i = 0; i < node->num_true; i++) {
-        generate_code(node->true_body[i]);
+        generate_code(node->true_body[i], symbol_table);
     }
     LLVMBuildBr(builder, merge_block);
     
     LLVMPositionBuilderAtEnd(builder, else_block);
     for (int i = 0; i < node->num_false; i++) {
-        generate_code(node->false_body[i]);
+        generate_code(node->false_body[i], symbol_table);
     }
     LLVMBuildBr(builder, merge_block);
     
@@ -211,7 +207,7 @@ LLVMValueRef codegen_if(ASTNode* node) {
     return NULL;
 }
 
-LLVMValueRef codegen_while(ASTNode* node) {
+LLVMValueRef codegen_while(ASTNode* node, SymbolTable* symbol_table) {
     LLVMBasicBlockRef cond_block = LLVMAppendBasicBlock(main_function, "loopcond");
     LLVMBasicBlockRef loop_block = LLVMAppendBasicBlock(main_function, "loop");
     LLVMBasicBlockRef after_block = LLVMAppendBasicBlock(main_function, "afterloop");
@@ -219,12 +215,12 @@ LLVMValueRef codegen_while(ASTNode* node) {
     LLVMBuildBr(builder, cond_block);
     
     LLVMPositionBuilderAtEnd(builder, cond_block);
-    LLVMValueRef condition = generate_code(node->left);
+    LLVMValueRef condition = generate_code(node->left, symbol_table);
     LLVMBuildCondBr(builder, condition, loop_block, after_block);
     
     LLVMPositionBuilderAtEnd(builder, loop_block);
     for (int i = 0; i < node->num_children; i++) {
-        generate_code(node->children[i]);
+        generate_code(node->children[i], symbol_table);
     }
     LLVMBuildBr(builder, cond_block);
     
@@ -233,28 +229,30 @@ LLVMValueRef codegen_while(ASTNode* node) {
     return NULL;
 }
 
-LLVMValueRef generate_code(ASTNode* node) {
+LLVMValueRef generate_code(ASTNode* node, SymbolTable* symbol_table) {
     switch (node->type) {
         case NODE_TYPE_NUMBER:
             return codegen_number(node);
         case NODE_TYPE_VARIABLE:
-            return codegen_variable(node);
+            return codegen_variable(node, symbol_table);
         case NODE_TYPE_BINARY_OP:
-            return codegen_binary_op(node);
+            return codegen_binary_op(node, symbol_table);
         case NODE_TYPE_UNARY_OP:
-            return codegen_unary_op(node);
+            return codegen_unary_op(node, symbol_table);
         case NODE_TYPE_ASSIGNMENT:
-            return codegen_assignment(node);
+            return codegen_assignment(node, symbol_table);
         case NODE_TYPE_PRINT:
-            return codegen_print(node);
+            return codegen_print(node, symbol_table);
         case NODE_TYPE_CALL:
-            return codegen_call(node);
+            return codegen_call(node, symbol_table);
         case NODE_TYPE_IF:
-            return codegen_if(node);
+            return codegen_if(node, symbol_table);
         case NODE_TYPE_WHILE:
-            return codegen_while(node);
+            return codegen_while(node, symbol_table);
         case NODE_TYPE_STRING:
             return codegen_string(node);
+        case NODE_TYPE_FUNCTION_DEF:
+            return codegen_function_def(node, symbol_table);
         default:
             fprintf(stderr, "Unknown AST node type: %d\n", node->type);
             exit(1);
@@ -262,23 +260,37 @@ LLVMValueRef generate_code(ASTNode* node) {
 }
 
 LLVMValueRef gencode(ASTNode* root) {
-    
     if (root->type == NODE_TYPE_MAIN_FUNC) {
+        SymbolTable* local_symbol_table = create_symbol_table(1024);
         LLVMTypeRef func_type = LLVMFunctionType(LLVMVoidType(), NULL, 0, 0);
         main_function = LLVMAddFunction(module, "main", func_type);
         LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_function, "entry");
         LLVMPositionBuilderAtEnd(builder, entry);
         
         for (int i = 0; i < root->num_children; i++) {
-            generate_code(root->children[i]);
+            if (root->children[i]->type == NODE_TYPE_ASSIGNMENT) {
+                LLVMValueRef var = LLVMBuildAlloca(builder, LLVMFloatType(), root->children[i]->value.var_name);
+                insert_symbol(local_symbol_table, root->children[i]->value.var_name, var);
+            }
+        }
+
+        for (int i = 0; i < root->num_children; i++) {
+            generate_code(root->children[i], local_symbol_table);
         }
         
         LLVMBuildRetVoid(builder);
-    } else if(root->type == NODE_TYPE_ROOT){
-    	for (int i = 0; i < root->num_children; i++) {
-        return generate_code(root->children[i]);
-    }
+        destroy_symbol_table(local_symbol_table);
+        
+    } else if (root->type == NODE_TYPE_ROOT) {
     
+        for (int i = 0; i < root->num_children - 1; i++) {
+    		SymbolTable* local_symbol_table = create_symbol_table(1024);
+            generate_code(root->children[i],local_symbol_table);
+    		destroy_symbol_table(local_symbol_table);
+        }
+        
+        gencode(root->children[root->num_children - 1]);
     }
 }
 #pragma GCC diagnostic warning "-Wdeprecated-declarations"
+
