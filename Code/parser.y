@@ -23,8 +23,8 @@ int yylex(void);
 %token <str_val> VARIABLE STRING FUNCTION_DEF
 %token START_DIRECTIVE PRINT_DIRECTIVE WHILE_DIRECTIVE IF_DIRECTIVE ELSE_DIRECTIVE EQUALS LESS_THAN LESS_THAN_EQUAL GREATER_THAN GREATER_THAN_EQUAL NOT_EQUAL AND OR ASSIGN PLUS MINUS MULTIPLY DIVIDE MODULO CALL_FUNC NEWLINE SPACE OPEN_PAREN CLOSE_PAREN NOT
 
-%type <node> expression term factor assignment print_statement while_statement if_statement statement condition comparison_operator directive one_function print_expressions in_statements main
-%type <node_list> statement_list w_statements while_statements conditional_statements functions
+%type <node> expression term factor assignment print_statement while_statement w_statements if_statement statement condition comparison_operator directive one_function print_expressions in_statements main
+%type <node_list> statement_list while_statements conditional_statements functions
 
 %left OR
 %left AND
@@ -144,62 +144,30 @@ in_statements: print_statement { $$ = $1; }
              | CALL_FUNC FUNCTION_DEF { $$ = create_call_node($2); }
              ;
             
-w_statements: in_statements { 
-                $$ = malloc(sizeof(ASTNode*));
-                $$[0] = $1; 
-              }
-            | w_statements SPACE in_statements { 
-                int count = 0;
-                while ($1[count] != NULL) count++;
-                $$ = realloc($1, (count + 2) * sizeof(ASTNode*));
-                $$[count] = $3;
-                $$[count + 1] = NULL;
-              }
-            ;
-            
 while_statement: WHILE_DIRECTIVE condition SPACE while_statements { 
                     int count = 0;
                     while ($4[count] != NULL) count++;
                     $$ = create_while_node($2, $4, count); 
-               }
-               ;
+               } ;
 
-while_statements: w_statements SPACE if_statement SPACE w_statements { 
-                    int count1 = 0;
-                    while ($1[count1] != NULL) count1++;
-                    int count2 = 0;
-                    while ($5[count2] != NULL) count2++;
-                    $$ = realloc($1, (count1 + 1 + count2 + 1) * sizeof(ASTNode*));
-                    $$[count1] = $3;
-                    for (int i = 0; i < count2; i++) {
-                        $$[count1 + 1 + i] = $5[i];
-                    }
-                    $$[count1 + 1 + count2] = NULL;
+while_statements: w_statements { 
+                    $$ = malloc(sizeof(ASTNode*));
+                    $$[0] = $1; 
                   }
-                | w_statements SPACE if_statement { 
+                | while_statements SPACE w_statements { 
                     int count = 0;
                     while ($1[count] != NULL) count++;
                     $$ = realloc($1, (count + 2) * sizeof(ASTNode*));
                     $$[count] = $3;
                     $$[count + 1] = NULL;
-                  }
-                | if_statement SPACE w_statements { 
-                    int count = 0;
-                    while ($3[count] != NULL) count++;
-                    $$ = malloc((1 + count + 1) * sizeof(ASTNode*));
-                    $$[0] = $1;
-                    for (int i = 0; i < count; i++) {
-                        $$[1 + i] = $3[i];
-                    }
-                    $$[1 + count] = NULL;
-                  }
-                | if_statement { 
-                    $$ = malloc((2) * sizeof(ASTNode*));
-                    $$[0] = $1;
-                    $$[1] = NULL;
-                  }
-                | w_statements { $$ = $1; }
-                ;
+                }
+              ;
+              
+w_statements: print_statement { $$ = $1; }
+            | assignment { $$ = $1; }
+            | if_statement { $$ = $1; }
+            | CALL_FUNC FUNCTION_DEF { $$ = create_call_node($2); }
+            ;
 
 if_statement: IF_DIRECTIVE condition SPACE conditional_statements { 
                     int count = 0;
